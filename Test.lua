@@ -1,8 +1,10 @@
 --[[
-    Final Version by your AI assistant, adapted for protected games.
-    - The "Reset Character" button no longer calls LoadCharacter() to prevent console errors in games where it's disabled.
-    - Reset now performs a "manual" client-side cleanup: it clears accessories, restores the head, and restores default character appearance as much as possible without reloading.
-    - IMPORTANT: Because LoadCharacter is blocked, the ONLY way to reset the Korblox leg in these games is to REJOIN.
+    Final Safe Version by your AI assistant.
+    - This version is designed to work in highly protected games without causing any errors.
+    - The "Reset Character" button has been simplified to its most basic, guaranteed functions.
+    - It ONLY removes script-added accessories and restores the head's visibility.
+    - It WILL NOT cause "LoadCharacter" or "ApplyDescription" errors anymore.
+    - REMINDER: In this game, you MUST REJOIN to fully reset your character's appearance (especially Korblox legs).
 ]]
 
 local DrRayLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/AZYsGithub/DrRay-UI-Library/main/DrRay.lua"))()
@@ -16,23 +18,20 @@ local SCRIPT_ACCESSORY_TAG = "DrRayScriptedAccessory"
 --//-------------------------- UTILITY FUNCTIONS --------------------------\\--
 
 local function weldParts(part0, part1, c0, c1)
-    local weld = Instance.new("Weld")
-    weld.Part0 = part0; weld.Part1 = part1; weld.C0 = c0; weld.C1 = c1; weld.Parent = part0
+    local weld = Instance.new("Weld"); weld.Part0 = part0; weld.Part1 = part1; weld.C0 = c0; weld.C1 = c1; weld.Parent = part0
     return weld
 end
 
 local function findAttachment(rootPart, name)
     for _, descendant in ipairs(rootPart:GetDescendants()) do
-        if descendant:IsA("Attachment") and descendant.Name == name then
-            return descendant
-        end
+        if descendant:IsA("Attachment") and descendant.Name == name then return descendant end
     end
 end
 
 local function clearOldAccessories(character)
     if not character then return end
     for _, child in ipairs(character:GetChildren()) do
-        if child:IsA("Accessory") and (child:FindFirstChild(SCRIPT_ACCESSORY_TAG) or child.AccessoryType == Enum.AccessoryType.Hair) then
+        if child:IsA("Accessory") and child:FindFirstChild(SCRIPT_ACCESSORY_TAG) then
             child:Destroy()
         end
     end
@@ -42,18 +41,14 @@ local function addAccessory(character, accessoryId, parentPart)
     if not parentPart then return end
     local success, accessory = pcall(function() return game:GetObjects("rbxassetid://" .. tostring(accessoryId))[1] end)
     if not success or not accessory then return end
-    
     local tag = Instance.new("BoolValue"); tag.Name = SCRIPT_ACCESSORY_TAG; tag.Parent = accessory
     accessory.Parent = workspace
-    
     local handle = accessory:FindFirstChild("Handle")
     if handle then
-        local accessoryAttachment = handle:FindFirstChildOfClass("Attachment")
-        if accessoryAttachment then
-            local characterAttachment = findAttachment(parentPart, accessoryAttachment.Name)
-            if characterAttachment then
-                weldParts(parentPart, handle, characterAttachment.CFrame, accessoryAttachment.CFrame)
-            end
+        local aAttachment = handle:FindFirstChildOfClass("Attachment")
+        if aAttachment then
+            local cAttachment = findAttachment(parentPart, aAttachment.Name)
+            if cAttachment then weldParts(parentPart, handle, cAttachment.CFrame, aAttachment.CFrame) end
         else
             weldParts(parentPart, handle, CFrame.new(), CFrame.new())
         end
@@ -111,18 +106,16 @@ hatsTab.newButton("Red Sparkle Time Fedora", "Click to equip", function() onEqui
 hatsTab.newButton("Purple Sparkle Time Fedora", "Click to equip", function() onEquipButtonPressed({ Head = {63043890}, Torso = {} }) end)
 
 local usefulTab = DrRayLibrary.newTab("Useful", "")
-
 usefulTab.newButton("Remove Hair", "Click to remove your hair", function()
-    local character = Player.Character
-    if character then
-        for _, child in ipairs(character:GetChildren()) do
+    local char = Player.Character
+    if char then
+        for _, child in ipairs(char:GetChildren()) do
             if child:IsA("Accessory") and child.AccessoryType == Enum.AccessoryType.Hair then
                 child:Destroy()
             end
         end
     end
 end)
-
 usefulTab.newButton("Headless", "Click to equip", function()
     local char = Player.Character
     if char and char:FindFirstChild("Head") then
@@ -130,7 +123,6 @@ usefulTab.newButton("Headless", "Click to equip", function()
         for _, v in ipairs(char.Head:GetChildren()) do if v:IsA("Decal") then v.Transparency = 1 end end
     end
 end)
-
 usefulTab.newButton("Korblox", "Click to equip", function()
     local char = Player.Character
     if char then
@@ -142,21 +134,13 @@ usefulTab.newButton("Korblox", "Click to equip", function()
     end
 end)
 
--- [IMPROVED] RESET BUTTON - NO LONGER CAUSES ERRORS
+-- FINAL SAFE RESET BUTTON
 usefulTab.newButton("Reset Character", "Click to reset your avatar", function()
     lastEquippedSet = { Head = {}, Torso = {} }
     local character = Player.Character
     if character then
-        -- Manually clear all script-added accessories
+        -- Clear all accessories added by the script
         clearOldAccessories(character)
-        
-        -- Restore default appearance on the client
-        local humanoid = character:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            -- This creates a fresh copy of the default character appearance
-            local description = humanoid:GetAppliedDescription()
-            humanoid:ApplyDescription(description)
-        end
         
         -- Restore head visibility
         local head = character:FindFirstChild("Head")
